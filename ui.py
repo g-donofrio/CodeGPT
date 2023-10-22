@@ -11,19 +11,20 @@ REPO_PATH = os.environ.get("REPO_PATH")
 REPO_NAME = os.environ.get("REPO_NAME")
 REPO_DEST = os.environ.get("REPO_DEST")
 CHAT_TITLE = os.environ.get("CHAT_TITLE")
+DB_PERSIST_PATH = os.environ.get("DB_PERSIST_PATH")
 
 
 # initialize Chat Engine
 @st.cache_resource(show_spinner=False) 
-def get_engine(openai_api_key, repo_url, repo_path, repo_dest):
-    return SingleModelCode(openai_api_key, repo_url, repo_path, repo_dest)
+def get_engine(openai_api_key, repo_url, repo_path, repo_dest, db_persist):
+    return SingleModelCode(openai_api_key, repo_url, repo_path, repo_dest, db_persist)
 
 
 with st.status(
     "Loading engine...",
     expanded=st.session_state.get("expanded", True),
 ) as status:
-    engine = get_engine(OPENAI_API_KEY, REPO_URL, REPO_PATH, REPO_DEST)
+    engine = get_engine(OPENAI_API_KEY, REPO_URL, REPO_PATH, REPO_DEST, DB_PERSIST_PATH)
     status.update(label="Engine loaded.", state="complete", expanded=False)
 st.session_state["expanded"] = False
 

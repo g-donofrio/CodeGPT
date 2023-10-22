@@ -32,11 +32,11 @@ class SingleModelCode:
 
     chat_history = []
 
-    def __init__(self, openai_api_key = None, repo_url = None, repo_path = None, repo_dest=None, suffixes=[".py"], language=Language.PYTHON):
+    def __init__(self, openai_api_key = None, repo_url = None, repo_path = None, repo_dest=None, db_directory=None, suffixes=[".py"], language=Language.PYTHON):
 
-        if not os.path.isdir(repo_path):
+        if not os.path.isdir(repo_dest):
             # Clone repo from Github
-            os.mkdir(repo_dest)
+            os.makedirs(repo_dest)
             print("DEBUG: Clone the repo")
             Repo.clone_from(repo_url, to_path=repo_dest)
         else:
@@ -55,8 +55,14 @@ class SingleModelCode:
                                                                chunk_overlap=200)
         print("DEBUG: Split documents")
         texts = python_splitter.split_documents(documents)
-        print("DEBUG: Create Chroma DB")
-        db = Chroma.from_documents(texts, OpenAIEmbeddings(openai_api_key=openai_api_key, disallowed_special=()))
+        db = None
+        if not os.path.isdir(db_directory):
+            print("DEBUG: Create Chroma DB")
+            db = Chroma.from_documents(texts, OpenAIEmbeddings(openai_api_key=openai_api_key, disallowed_special=()), persist_directory=db_directory)
+            db.persist()
+        else:
+            print("DEBUG: Load Chroma DB")
+            db = Chroma(persist_directory=db_directory, embedding_function=OpenAIEmbeddings(openai_api_key=openai_api_key, disallowed_special=()))
         print("DEBUG: Create retriver")
         retriever = db.as_retriever(
             search_type="similarity",
@@ -64,17 +70,21 @@ class SingleModelCode:
         )
         print("DEBUG: Instanciate LLM")
         llm = OpenAI(openai_api_key = openai_api_key, temperature=0.1, verbose=True)
-        print("DEBUG: Create memory")
-        memory = ConversationSummaryMemory(llm=llm,memory_key="chat_history",return_messages=True)
+        # print("DEBUG: Create memory")
+        # memory = ConversationSummaryMemory(llm=llm,memory_key="chat_history",return_messages=True)
         # qa = ConversationalRetrievalChain.from_llm(llm, retriever=retriever, memory=memory, return_source_documents=True)
         print("DEBUG: Instanciate QA model")
         qa = ConversationalRetrievalChain.from_llm(llm, retriever=retriever, return_source_documents=True)
+
+        print("DEBUG: Engine ready.")
 
         # Save properties
 
         self.openai_api_key = openai_api_key
         self.repo_url = repo_url
         self.repo_path = repo_path
+        self.repo_dest = repo_dest
+        self.db_directory = db_directory
         self.suffixes = suffixes
         self.language = language
 
@@ -82,7 +92,7 @@ class SingleModelCode:
         self.db = db
         self.retriver = retriever
         self.llm = llm
-        self.memory = memory
+        # self.memory = memory
         self.qa = qa
     
     """ 
